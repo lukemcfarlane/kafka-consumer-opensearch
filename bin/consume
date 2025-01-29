@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+
+require_relative '../lib/kafka_consumer_opensearch'
+
+KafkaConsumerOpenSearch.config do |config|
+  config.bootstrap_server = ENV.fetch('BOOTSTRAP_SERVER')
+end
+
+KafkaConsumerOpenSearch::Consumer.consume!

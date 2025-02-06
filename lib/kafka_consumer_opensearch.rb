@@ -4,4 +4,5 @@ require 'rdkafka'
 
 require_relative 'kafka_consumer_opensearch/base'
 require_relative 'kafka_consumer_opensearch/configuration'
+require_relative 'kafka_consumer_opensearch/opensearch_client'
 require_relative 'kafka_consumer_opensearch/consumer'

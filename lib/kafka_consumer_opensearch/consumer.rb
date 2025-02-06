@@ -10,7 +10,7 @@ module KafkaConsumerOpenSearch
     end
 
     def consume!
-      puts 'TODO'
+      OpenSearchClient.new(config)
     end
 
     def self.consume!

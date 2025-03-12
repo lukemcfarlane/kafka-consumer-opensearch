@@ -40,7 +40,6 @@ class OpenSearchClient
       url: config.opensearch_url,
       retry_on_failure: 5,
       request_timeout: 120,
-      # log: true,
       transport_options: { ssl: { verify: false } },
       user: 'admin',
       password: ENV.fetch('OPENSEARCH_INITIAL_ADMIN_PASSWORD'),

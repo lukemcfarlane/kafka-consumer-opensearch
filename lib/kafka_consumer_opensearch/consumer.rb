@@ -18,8 +18,21 @@ module KafkaConsumerOpenSearch
     def consume!
       consumer.subscribe(TOPIC)
 
+      puts "Subscribed to #{TOPIC}"
+
       consumer.each do |message|
-        puts "Message received: #{message}"
+        payload = JSON.parse(message.payload)
+        payload.delete('log_params') # workaround for OpenSearch mapping issue
+        id = payload.dig('meta', 'id')
+
+        puts "Received message: #{id}"
+
+        res = open_search_client.index(
+          index: OpenSearchClient::INDEX_NAME,
+          body: payload,
+          id: id,
+        )
+        puts "#{res['result']} open search document with id: #{res['_id']}"
       end
     end
 

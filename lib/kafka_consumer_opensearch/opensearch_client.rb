@@ -2,6 +2,8 @@
 
 require 'opensearch'
 
+# See https://opensearch.org/docs/latest/clients/ruby/#sample-program
+
 class OpenSearchClient
   INDEX_NAME = 'wikimedia'
 
@@ -11,6 +13,10 @@ class OpenSearchClient
     puts "OpenSearch client initialized: #{client.cluster.health}"
 
     create_index unless index_exists?
+  end
+
+  def index(**args)
+    client.index(**args)
   end
 
   private

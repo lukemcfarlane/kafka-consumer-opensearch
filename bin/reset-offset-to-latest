@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+kafka-consumer-groups --bootstrap-server localhost:9092 \
+  --group opensearch-consumer \
+  --topic wikimedia.recentchange \
+  --reset-offsets \
+  --to-latest \
+  --execute

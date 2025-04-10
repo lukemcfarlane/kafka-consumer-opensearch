@@ -11,28 +11,35 @@ module KafkaConsumerOpenSearch
       # Reference: https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md
       @kafka_config = {
         'bootstrap.servers' => config.bootstrap_server,
-        'group.id' => 'opensearch-consumer'
+        'group.id' => 'opensearch-consumer',
+        'enable.auto.commit' => false,
       }
     end
 
     def consume!
+      # rdkafka-ruby documentation: https://karafka.io/docs/code/rdkafka-ruby/Rdkafka/Consumer.html
+
       consumer.subscribe(TOPIC)
 
       puts "Subscribed to #{TOPIC}"
 
-      consumer.each do |message|
-        payload = JSON.parse(message.payload)
-        payload.delete('log_params') # workaround for OpenSearch mapping issue
-        id = payload.dig('meta', 'id')
+      consumer.each_slice(500) do |messages|
+        documents = []
 
-        puts "Received message: #{id}"
+        messages.each do |message|
+          payload = JSON.parse(message.payload)
+          payload.delete('log_params') # workaround for OpenSearch mapping issue
+          id = payload.dig('meta', 'id')
 
-        res = open_search_client.index(
-          index: OpenSearchClient::INDEX_NAME,
-          body: payload,
-          id: id,
-        )
-        puts "#{res['result']} open search document with id: #{res['_id']}"
+          documents << { index: { _index: OpenSearchClient::INDEX_NAME, _id: id } }
+          documents << payload
+        end
+        res = open_search_client.bulk(body: documents)
+
+        results =  res['items'].map { |item| item.dig('index', 'result') }
+        puts "Processed #{messages.count} messages #{results.tally}"
+
+        consumer.commit
       end
     end
 

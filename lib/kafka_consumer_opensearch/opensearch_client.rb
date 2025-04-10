@@ -19,6 +19,10 @@ class OpenSearchClient
     client.index(**args)
   end
 
+  def bulk(**args)
+    client.bulk(**args)
+  end
+
   private
 
   attr_reader :config

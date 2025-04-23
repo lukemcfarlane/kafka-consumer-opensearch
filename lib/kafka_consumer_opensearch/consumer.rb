@@ -14,6 +14,9 @@ module KafkaConsumerOpenSearch
         'group.id' => 'opensearch-consumer',
         'enable.auto.commit' => false,
       }
+      @running = true
+
+      ensure_graceful_shutdown
     end
 
     def consume!
@@ -23,24 +26,31 @@ module KafkaConsumerOpenSearch
 
       puts "Subscribed to #{TOPIC}"
 
-      consumer.each_slice(500) do |messages|
-        documents = []
+      begin
+        consumer.each_slice(500) do |messages|
+          break if shutting_down?
 
-        messages.each do |message|
-          payload = JSON.parse(message.payload)
-          payload.delete('log_params') # workaround for OpenSearch mapping issue
-          id = payload.dig('meta', 'id')
+          documents = []
 
-          documents << { index: { _index: OpenSearchClient::INDEX_NAME, _id: id } }
-          documents << payload
+          messages.each do |message|
+            payload = JSON.parse(message.payload)
+            payload.delete('log_params') # workaround for OpenSearch mapping issue
+            id = payload.dig('meta', 'id')
+
+            documents << { index: { _index: OpenSearchClient::INDEX_NAME, _id: id } }
+            documents << payload
+          end
+          res = open_search_client.bulk(body: documents)
+
+          results =  res['items'].map { |item| item.dig('index', 'result') }
+          puts "Processed #{messages.count} messages #{results.tally}"
+
+          consumer.commit
         end
-        res = open_search_client.bulk(body: documents)
-
-        results =  res['items'].map { |item| item.dig('index', 'result') }
-        puts "Processed #{messages.count} messages #{results.tally}"
-
-        consumer.commit
       end
+    ensure
+      consumer.close
+      puts 'Consumer closed'
     end
 
     def open_search_client
@@ -57,6 +67,19 @@ module KafkaConsumerOpenSearch
 
     def consumer
       @consumer ||= Rdkafka::Config.new(kafka_config).consumer
+    end
+
+    def ensure_graceful_shutdown
+      %w[INT TERM].each do |signal|
+        Signal.trap(signal) do
+          puts "Shutting down..."
+          @running = false
+        end
+      end
+    end
+
+    def shutting_down?
+      !@running
     end
   end
 end
